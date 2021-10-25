@@ -1,17 +1,41 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace IS4Service.Data.Migrations.ASPNetIdentity
+namespace IS4Service.Data.Migrations.IdentityServer.IdentityExpressDb
 {
-    public partial class InitialASPNetIdentityDb : Migration
+    public partial class InitialIS4IdentityExpressDbMigration : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "AspNetClaimTypes",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Required = table.Column<bool>(type: "bit", nullable: false),
+                    Reserved = table.Column<bool>(type: "bit", nullable: false),
+                    ValueType = table.Column<int>(type: "int", nullable: false),
+                    Rule = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    RuleValidationFailureDescription = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UserEditable = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetClaimTypes", x => x.Id);
+                    table.UniqueConstraint("AK_AspNetClaimTypes_Name", x => x.Name);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Reserved = table.Column<bool>(type: "bit", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -39,11 +63,35 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                     TwoFactorEnabled = table.Column<bool>(type: "bit", nullable: false),
                     LockoutEnd = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     LockoutEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "int", nullable: false)
+                    AccessFailedCount = table.Column<int>(type: "int", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsBlocked = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    NormalizedFirstName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    NormalizedLastName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EnumClaimTypeAllowedValues",
+                columns: table => new
+                {
+                    ClaimTypeId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EnumClaimTypeAllowedValues", x => new { x.ClaimTypeId, x.Value });
+                    table.ForeignKey(
+                        name: "FK_EnumClaimTypeAllowedValues_AspNetClaimTypes_ClaimTypeId",
+                        column: x => x.ClaimTypeId,
+                        principalTable: "AspNetClaimTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -74,12 +122,18 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ClaimType = table.Column<string>(type: "nvarchar(256)", nullable: false),
                     ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUserClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUserClaims_AspNetClaimTypes_ClaimType",
+                        column: x => x.ClaimType,
+                        principalTable: "AspNetClaimTypes",
+                        principalColumn: "Name",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_AspNetUserClaims_AspNetUsers_UserId",
                         column: x => x.UserId,
@@ -153,6 +207,13 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                 });
 
             migrationBuilder.CreateIndex(
+                name: "ClaimTypeNameIndex",
+                table: "AspNetClaimTypes",
+                column: "NormalizedName",
+                unique: true,
+                filter: "[NormalizedName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
                 column: "RoleId");
@@ -163,6 +224,11 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                 column: "NormalizedName",
                 unique: true,
                 filter: "[NormalizedName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserClaims_ClaimType",
+                table: "AspNetUserClaims",
+                column: "ClaimType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserClaims_UserId",
@@ -180,9 +246,29 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
+                name: "CountIndex",
+                table: "AspNetUsers",
+                columns: new[] { "IsBlocked", "IsDeleted" });
+
+            migrationBuilder.CreateIndex(
+                name: "CountIndexReversed",
+                table: "AspNetUsers",
+                columns: new[] { "IsDeleted", "IsBlocked" });
+
+            migrationBuilder.CreateIndex(
                 name: "EmailIndex",
                 table: "AspNetUsers",
                 column: "NormalizedEmail");
+
+            migrationBuilder.CreateIndex(
+                name: "FirstNameIndex",
+                table: "AspNetUsers",
+                column: "NormalizedFirstName");
+
+            migrationBuilder.CreateIndex(
+                name: "LastNameIndex",
+                table: "AspNetUsers",
+                column: "NormalizedLastName");
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
@@ -210,10 +296,16 @@ namespace IS4Service.Data.Migrations.ASPNetIdentity
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "EnumClaimTypeAllowedValues");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "AspNetClaimTypes");
         }
     }
 }

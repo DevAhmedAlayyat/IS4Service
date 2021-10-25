@@ -34,7 +34,7 @@ namespace IS4Service
                         //IdentityServerConstants.StandardScopes.Email,
                         //"gateway"
                     },
-                    AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
+                    AllowedGrantTypes = GrantTypes.ResourceOwnerPassword
                     //AccessTokenType = AccessTokenType.Reference
                 }
             };

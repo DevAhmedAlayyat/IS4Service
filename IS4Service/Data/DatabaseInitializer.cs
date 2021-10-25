@@ -1,4 +1,6 @@
-﻿using IS4Service.Models;
+﻿using IdentityServer4.EntityFramework.DbContexts;
+using IdentityServer4.EntityFramework.Mappers;
+using IS4Service.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using System;
@@ -23,6 +25,31 @@ namespace IS4Service.Data
             user2.PasswordHash = passwordHasher.HashPassword(user2, "123");
             await userStore.CreateAsync(user1);
             await userStore.CreateAsync(user2);
+            await context.SaveChangesAsync();
+        }
+        public async static Task SeedIS4Data(ConfigurationDbContext context)
+        {
+            if (!context.Clients.Any())
+            {
+                foreach (var item in Config.GetClients())
+                {
+                    context.Clients.Add(item.ToEntity());
+                }
+            }
+            if (!context.ApiScopes.Any())
+            {
+                foreach (var item in Config.GetApiScopes())
+                {
+                    context.ApiScopes.Add(item.ToEntity());
+                }
+            }
+            if (!context.ApiResources.Any())
+            {
+                foreach (var item in Config.GetApiResources())
+                {
+                    context.ApiResources.Add(item.ToEntity());
+                }
+            }
             await context.SaveChangesAsync();
         }
     }

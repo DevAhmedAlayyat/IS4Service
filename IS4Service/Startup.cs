@@ -1,19 +1,18 @@
-using IdentityServer4.Services;
+using IdentityExpress.Identity;
+using IdentityServer4;
+using IdentityServer4.Validation;
 using IS4Service.Data;
+using IS4Service.IS4ExtendedClass;
 using IS4Service.Models;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Reflection;
 
 namespace IS4Service
 {
@@ -29,22 +28,43 @@ namespace IS4Service
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
+            string conStr = Configuration.GetConnectionString("DefaultConnection");
+            string migrationAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+            services.AddControllersWithViews();
+
             services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
+                options.UseSqlServer(conStr);
             });
-            services.AddIdentity<ApplicationUser, IdentityRole>()
+            services.AddIdentity<ApplicationUser, IdentityExpressRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddIdentityExpressUserClaimsPrincipalFactory()
                 .AddDefaultTokenProviders();
 
+
+            services.AddAuthentication(options =>
+            {
+                if (options.DefaultAuthenticateScheme == null &&
+                    options.DefaultScheme == IdentityServerConstants.DefaultCookieAuthenticationScheme)
+                {
+                    options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                }
+            });
             services.AddIdentityServer()
                 .AddDeveloperSigningCredential()
-                //.AddInMemoryIdentityResources(Config.GetIdentityResources())
-                .AddInMemoryApiScopes(Config.GetApiScopes())
-                .AddInMemoryApiResources(Config.GetApiResources())
-                .AddInMemoryClients(Config.GetClients())
+                .AddConfigurationStore(storeOptions =>
+                {
+                    storeOptions.ConfigureDbContext = b =>
+                        b.UseSqlServer(conStr, npgSql => npgSql.MigrationsAssembly(migrationAssembly));
+                })
+                .AddOperationalStore(storeOptions =>
+                {
+                    storeOptions.ConfigureDbContext = b =>
+                        b.UseSqlServer(conStr, npgSql => npgSql.MigrationsAssembly(migrationAssembly));
+                })
                 .AddAspNetIdentity<ApplicationUser>();
+
+            //services.AddTransient<IResourceOwnerPasswordValidator, ResourceOwnerPasswordValidator>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -58,11 +78,14 @@ namespace IS4Service
             app.UseRouting();
 
             app.UseIdentityServer();
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapDefaultControllerRoute();
             });
+
+            app.UseStaticFiles();
         }
     }
 }
